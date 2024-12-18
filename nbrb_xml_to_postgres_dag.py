@@ -1,9 +1,8 @@
-"""
-This DAG is for moving official exchange rates of the Belarusian ruble against foreign currencies
+"""This DAG is for moving official exchange rates of the Belarusian ruble against foreign currencies
 set by the National Bank of the Republic of Belarus on a daily basis from XML to Postgres.
 
 Todo:
-    * Make possible to extract the rates only for business days, i.e. excepting weekends and holiday national days. You need to twick schedule_interval, or implement branch or shortcircuit operator.
+    * Make possible to extract the rates only for business days, i.e. excepting weekends and holiday national days. You need to twick schedule_interval, or implement BranchOperator or ShortCircuitOperator.
 
 """
 import os
@@ -28,14 +27,14 @@ url_nbrb_rates = 'https://services.nbrb.by/xmlexrates.aspx?ondate={{ ds }}'
 
 DEFAULT_ARGS = {
     'start_date': days_ago(30),
-    'owner': 'p.asinski',
+    'owner': 'pawelasinski',
     'doc_md': __doc__,
 }
 
 with DAG(
         dag_id='nbrb_xml_to_postgres_dag',
         default_args=DEFAULT_ARGS,
-        tags=['asinski'],
+        tags=['tutorial'],
         schedule_interval='0 0 * * 1-6',
         max_active_runs=1,
 ):
@@ -52,15 +51,15 @@ with DAG(
 
     def check_if_data_exists_func(execution_date):
         pg_hook = PostgresHook(postgres_conn_id='asinski_postgres_conn')
-        conn = pg_hook.get_conn()  # Получаем соединение с базой данных. Это объект типа psycopg2.extensions.connection.
 
-        cursor = conn.cursor()  # Курсор необходим для выполнения SQL-запросов к базе данных.
+        with pg_hook.get_conn() as conn:
+            cursor = conn.cursor()
 
-        query = 'SELECT EXISTS (SELECT 1 FROM nbrb_rates_daily_basis WHERE date = %s)'  # Вместо указания конкретного столбца, мы используем 1 (или любое другое значение). Это помогает минимизировать количество данных, которые должны быть извлечены для проверки, так как нам важно лишь знать, существует ли строка, а не получить конкретные данные из неё.
-        cursor.execute(query, (execution_date,))  # Кортеж параметров передается вторым аргументом метода execute.
-        exists = cursor.fetchone()[0]  # cursor.fetchall() - возвращает список кортежей, cursor.fetchone() - возвращает один (первый) кортеж (еще один вызов вернет второй кортеж), cursor.fetchone()[0] - возвращает первый элемент кортежа.
+            query = 'SELECT EXISTS (SELECT 1 FROM nbrb_rates_daily_basis WHERE date = %s)'
+            cursor.execute(query, (execution_date,))
+            exists = cursor.fetchone()[0]
 
-        cursor.close()
+            cursor.close()
 
         return not exists
 
@@ -91,7 +90,10 @@ with DAG(
                 name = currency.find('Name').text
                 rate = currency.find('Rate').text
 
-                the_whole_curr_row = [currency.attrib['Id'], root.attrib['Date'], numcode, charcode, scale, name, rate]
+                the_whole_curr_row = [
+                    currency.attrib['Id'], root.attrib['Date'],
+                    numcode, charcode, scale, name, rate
+                ]
                 csv_writer.writerow(the_whole_curr_row)
 
                 logging.info(the_whole_curr_row)
@@ -107,7 +109,8 @@ with DAG(
         pg_hook = PostgresHook(postgres_conn_id='asinski_postgres_conn')
 
         with open(f'{path_csv_conv}', 'r') as csv_file:
-            pg_hook.copy_expert(sql="COPY nbrb_rates_daily_basis FROM stdin DELIMITER ','", filename=csv_file.name)
+            pg_hook.copy_expert(sql="COPY nbrb_rates_daily_basis FROM stdin DELIMITER ','",
+                                filename=csv_file.name)
 
 
     load_csv_into_postgres = PythonOperator(
