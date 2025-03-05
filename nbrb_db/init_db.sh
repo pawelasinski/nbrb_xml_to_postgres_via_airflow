@@ -2,7 +2,7 @@
 
 set -e
 
-psql -v ON_ERROR_STOP=1 --username "${USER_METADATA_DB}" --dbname "${METADATA_DB}" <<-EOSQL
+psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER}" --dbname "${POSTGRES_DB}" <<-EOSQL
 CREATE TABLE IF NOT EXISTS nbrb_rates_daily_basis
   (
     id TEXT NOT NULL,
