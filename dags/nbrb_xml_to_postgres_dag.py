@@ -143,7 +143,7 @@ with DAG(
             logger.error("Error loading CSV file: %s", e)
             raise
         except OperationalError as e:
-            logger.error("Error to connect to the `nbrb_rates_daily_basis` database: %s",
+            logger.error("Error to connect to the `nbrb_rates_daily_basis` table: %s",
                          e)
             raise
         except DataError as e:
