@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-set -e  # Exit immediately if a command exits with a non-zero status.
+set -e
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+psql -v ON_ERROR_STOP=1 --username "${USER_METADATA_DB}" --dbname "${METADATA_DB}" <<-EOSQL
 CREATE TABLE IF NOT EXISTS nbrb_rates_daily_basis
   (
     id TEXT NOT NULL,
@@ -14,4 +14,3 @@ CREATE TABLE IF NOT EXISTS nbrb_rates_daily_basis
     rate TEXT NOT NULL
   );
 EOSQL
-# -v ON_ERROR_STOP=1 — it is a flag that tells psql to stop execution if an error occurs.
